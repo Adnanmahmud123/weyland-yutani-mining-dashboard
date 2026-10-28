@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Weyland–Yutani | Mining Operations Analytics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand"><div class="brandmark">WY</div><div><b>WEYLAND–YUTANI</b><small>MINING OPERATIONS</small></div></div>
+        <div class="side-label">WORKSPACE</div>
+        <a class="nav active" href="#overview">▦ <span>Analytics overview</span></a>
+        <a class="nav" href="#chart-panel">⌁ <span>Output explorer</span></a>
+        <a class="nav" href="#anomalies">◉ <span>Anomaly register</span></a>
+        <div class="side-bottom"><div class="status-dot"></div><span>LOCAL ANALYSIS ENGINE</span><small>Build 1.0.0</small></div>
+      </aside>
+      <main class="main">
+        <header class="topbar"><div><div class="eyebrow">OPERATIONS INTELLIGENCE / SECTOR 07</div><h1>Mining output analytics</h1><p>Statistical monitoring across mine production and total daily output.</p></div><button id="pdfBtn" class="primary">↧ Generate PDF report</button></header>
+        <section class="sourcebar panel">
+          <div class="source-title"><b>DATA SOURCE</b><span id="sourceStatus" class="pill warn">Waiting for data</span></div>
+          <div class="source-controls">
+            <label class="file-button">Upload generator workbook / CSV<input id="fileInput" type="file" accept=".xlsx,.xls,.csv"></label>
+            <span class="muted">or</span>
+            <input id="csvUrl" class="url-input" placeholder="Published Google Sheets CSV URL (optional)">
+            <button id="loadUrl" class="secondary">Load URL</button>
+            <button id="demoBtn" class="ghost">Load demo data</button>
+          </div>
+          <small class="hint">For live Google Sheets data: File → Share → Publish to web → select the Data sheet as CSV, then paste the published CSV URL. Alternatively upload the .xlsx generator workbook.</small>
+        </section>
+        <section id="overview" class="metric-grid">
+          <div class="metric panel"><span>DATE RANGE</span><strong id="dateRange">—</strong><small id="dayCount">No data loaded</small></div>
+          <div class="metric panel"><span>MEAN DAILY TOTAL</span><strong id="meanTotal">—</strong><small>Units / day</small></div>
+          <div class="metric panel"><span>STANDARD DEVIATION</span><strong id="sdTotal">—</strong><small>Daily total output</small></div>
+          <div class="metric panel"><span>DETECTED ANOMALIES</span><strong id="anomalyCount">—</strong><small>Across selected series</small></div>
+        </section>
+        <section class="panel controls">
+          <div class="section-head"><div><div class="eyebrow">ANALYSIS CONTROLS</div><h2>Detection parameters</h2></div><button id="refreshBtn" class="secondary">↻ Recalculate</button></div>
+          <div class="control-grid">
+            <label>IQR multiplier <input id="iqrK" type="number" min="0.1" max="5" step="0.1" value="1.5"></label>
+            <label>Absolute z-score threshold <input id="zThreshold" type="number" min="0.5" max="6" step="0.1" value="2.5"></label>
+            <label>Moving average window (days) <input id="maWindow" type="number" min="2" max="60" value="7"></label>
+            <label>Moving-average distance (%) <input id="maPercent" type="number" min="1" max="300" step="1" value="30"></label>
+            <label>Grubbs alpha <select id="grubbsAlpha"><option value="0.01">0.01</option><option value="0.05" selected>0.05</option><option value="0.1">0.10</option></select></label>
+            <label>Series to inspect <select id="seriesSelect"><option value="Total Output">Total Output</option></select></label>
+          </div>
+        </section>
+        <section class="panel" id="chart-panel">
+          <div class="section-head"><div><div class="eyebrow">TIME SERIES</div><h2>Output explorer</h2></div>
+            <div class="chart-controls"><label>Chart type <select id="chartType"><option value="line">Line</option><option value="bar">Bar</option><option value="stacked">Stacked</option></select></label><label>Trendline degree <select id="trendDegree"><option value="1">1 — Linear</option><option value="2">2 — Quadratic</option><option value="3">3 — Cubic</option><option value="4">4 — Quartic</option></select></label></div>
+          </div>
+          <div class="chart-wrap"><canvas id="outputChart"></canvas></div><div class="chart-foot"><span>● Selected series</span><span class="red-key">● Anomaly</span><span class="trend-key">━ Polynomial trendline</span></div>
+        </section>
+        <section class="panel">
+          <div class="section-head"><div><div class="eyebrow">STATISTICAL SUMMARY</div><h2>Mine-by-mine performance</h2></div><span class="muted">Calculated from current source</span></div>
+          <div class="table-wrap"><table id="statsTable"><thead><tr><th>Series</th><th>Mean</th><th>Std. dev.</th><th>Median</th><th>IQR</th><th>IQR flags</th><th>Z flags</th><th>MA flags</th><th>Grubbs flags</th></tr></thead><tbody><tr><td colspan="9" class="empty">Upload a workbook or CSV to begin.</td></tr></tbody></table></div>
+        </section>
+        <section class="panel" id="anomalies">
+          <div class="section-head"><div><div class="eyebrow">EXCEPTION MANAGEMENT</div><h2>Anomaly register</h2></div><span id="anomalyPill" class="pill">0 findings</span></div>
+          <div class="table-wrap"><table id="anomalyTable"><thead><tr><th>Date</th><th>Series</th><th>Output</th><th>Test</th><th>Direction</th><th>Reason</th></tr></thead><tbody><tr><td colspan="6" class="empty">No findings yet.</td></tr></tbody></table></div>
+        </section>
+        <footer>WEYLAND–YUTANI CORPORATION <span>CONFIDENTIAL • OPERATIONS INTELLIGENCE</span></footer>
+      </main>
+    </div>
+    <script src="app.js"></script>
+  </body></html>
